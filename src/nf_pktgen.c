@@ -779,6 +779,8 @@ queue_reorganize() {
   
   uint32_t curr_addr = 0;
   uint32_t rx_queue_size[] = {0,0,0,0};
+
+  int listening_intf = 0, byte_count = 0;
   
   // Calculate the size of the receive queues
   //  - all unallocated memory given to rx queues
@@ -786,13 +788,34 @@ queue_reorganize() {
   //    (first queue given any remaining memory)
   uint32_t queue_free = MEM_SIZE - NUM_PORTS * XMIT_QUEUE_SIZE;
   int i;
-  for (i = 0; i < NUM_PORTS; i++) 
+  for (i = 0; i < NUM_PORTS; i++) {
+    printf("queue %d %d %d\n", queue_free, get_queue_size(i), i);
     queue_free -= get_queue_size(i);
-  
-  for(i=0; i< NUM_PORTS; i++) 
-    rx_queue_size[i] = floor( ((float)queue_free) / NUM_PORTS);
+  }
 
-  rx_queue_size[0] += queue_free - NUM_PORTS * rx_queue_size[0]; //what's left, added up to the first queue
+  for (i = 0; i < NUM_PORTS; i++) {
+    if(nf_pktgen.obj_cap[i].pcap_handle) 
+      listening_intf++;
+    else {
+      queue_free -= 4;
+      rx_queue_size[i] = 4;
+    }
+  }
+  
+  for (i = 0; i < NUM_PORTS; i++) {
+    if(nf_pktgen.obj_cap[i].pcap_handle) {
+       rx_queue_size[i] = floor( ((float)queue_free) / listening_intf);
+       byte_count += floor( ((float)queue_free) / listening_intf);
+    }
+  }
+  rx_queue_size[0] += (queue_free - byte_count);
+
+  queue_free -= (queue_free - byte_count);
+
+/*   for(i=0; i< NUM_PORTS; i++)  */
+/*     rx_queue_size[i] = floor( ((float)queue_free) / NUM_PORTS); */
+
+/*   rx_queue_size[0] += queue_free - NUM_PORTS * rx_queue_size[0]; //what's left, added up to the first queue */
 
   for(i=0; i< NUM_PORTS; i++) {
     printf("queue %d: %d (count %d %f)\n", i,  rx_queue_size[i], queue_free, (((float)queue_free)/NUM_PORTS) );
@@ -1114,7 +1137,7 @@ nf_cap_stat(int queue, struct nf_cap_stats *stat) {
   readReg(&nf_pktgen.nf2, PKT_GEN_CTRL_0_BYTE_COUNT_HI_REG+offset, &byte_cnt_hi);
   readReg(&nf_pktgen.nf2, PKT_GEN_CTRL_0_BYTE_COUNT_LO_REG+offset, &byte_cnt_lo);
 
-  stat->byte_cnt = ((uint64_t)byte_cnt_hi)*pow(2,32) + (byte_cnt_lo);
+  stat->byte_cnt = ((uint64_t)byte_cnt_hi)<<32 + (uint64_t)(byte_cnt_lo);
 /*   readReg(nf_pktgen.nf2, PKT_GEN_CTRL_0_TIME_FIRST_HI_REG+offset, &time_first_hi); */
 /*   readReg(nf_pktgen.nf2, PKT_GEN_CTRL_0_TIME_FIRST_LO_REG+offset, &time_first_lo); */
   
@@ -1299,6 +1322,9 @@ nf_cap_next(struct nf_cap_t *cap, struct pcap_pkthdr *h) {
   
   pcap_data = (uint8_t *)pcap_next(cap->pcap_handle, h);
   //  len = recv(cap->cap_fd, data, 2048, 0);
+  if(!pcap_data) 
+    return NULL;
+  
   if(h->len <= 24) {
     fprintf(stderr, "received too small pakcet");
     return NULL;
