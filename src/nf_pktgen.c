@@ -582,7 +582,7 @@ nf_gen_load_pcap(const char *filename, int port, int32_t delay) {
 
   if((pcap = pcap_open_offline(filename, errbuf)) == NULL) {
     fprintf(stderr, "pcap_open_offline:%s\n", errbuf);
-    reutnr -1;
+    return -1;
   }
   printf("laod file %s with delay %ld\n", filename, delay);
 
