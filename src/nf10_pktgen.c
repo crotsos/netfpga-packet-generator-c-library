@@ -333,7 +333,7 @@ int nf_start(int wait) {
         socket_address.sll_halen    = ETH_ALEN;
 
         ix = 0;
-        printf("adding %d packet on port %s\n", nf10.queue_pkts[i], if_name);
+        // printf("adding %d packet on port %s\n", nf10.queue_pkts[i], if_name);
         for (j = 0; j < nf10.queue_pkts[i]; j++) {
             if (sendto(if_fd, nf10.queue_data[i] + ix, nf10.pkt_len[i][j], 0,
                         (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) < 0)
@@ -341,7 +341,7 @@ int nf_start(int wait) {
             ix += nf10.pkt_len[i][j];
             if (j%10 == 0) {
                 // usleep(.1);
-                printf("sleeping\n");
+                //printf("sleeping\n");
             }
         }
         close(if_fd);
@@ -359,8 +359,8 @@ int nf_start(int wait) {
             perror("mmap");
             return -1;
         }
-        printf("lbuf[%d] is mmaped to vaddr=%p w/ size=%lu\n",
-                i, nf10.buf[i], LBUF_SIZE);
+        //printf("lbuf[%d] is mmaped to vaddr=%p w/ size=%lu\n",
+        //        i, nf10.buf[i], LBUF_SIZE);
     }
 
 	CPU_ZERO(&cpu);
@@ -371,7 +371,7 @@ int nf_start(int wait) {
     usleep(1);
     nf10.gen_start = ((double)time(NULL));
     pthread_yield();
-    printf("finished doing stuff...\n");
+    //printf("finished doing stuff...\n");
     stop_gen();
     start_gen();
 
@@ -420,10 +420,10 @@ int nf_gen_wait_end() {
         }
     }
 
-    printf("delta : %f, last_pkt: %.09f\n", delta, last_pkt);
+    //printf("delta : %f, last_pkt: %.09f\n", delta, last_pkt);
     // Wait the requesite number of seconds
     while (delta <= last_pkt) {
-        printf("\r%1.3f seconds elapsed...\n", delta);
+        //printf("\r%1.3f seconds elapsed...\n", delta);
         pthread_yield();
         delta = ((double)time(NULL)) - nf10.gen_start;
     }
@@ -497,7 +497,7 @@ struct nf_cap_t *nf_cap_enable(char *dev_name, int caplen) {
     ret->if_ix = port;
 	sem_init(&ret->sem, 0, 0);
 	nf10.pcap_sem[port] = &ret->sem;
-    printf("created fd %d for dev %s port %d\n", nf10.cap_fd[port], dev_name, port);
+    // printf("created fd %d for dev %s port %d\n", nf10.cap_fd[port], dev_name, port);
 
     //TODO fix caplen
     return ret;
@@ -510,7 +510,7 @@ int nf_finish() {
     stop_gen();
     nf10.terminate = 1;
     // close(nf10.dev_fd);
-    printf("XXXXXXXX terminating generation thread XXXXXXXX\n");
+    // printf("XXXXXXXX terminating generation thread XXXXXXXX\n");
 	pthread_mutex_destroy(&nf10.pkt_lock);
     ioctl(nf10.dev_fd, NF10_IOCTL_CMD_INIT, &ret);
    	return 0;
@@ -607,8 +607,9 @@ nf_pcap_run() {
 		
 		for (i=0; i < count; i++) {
 			if (( (port = metadata_to_port(pkt_osnt[i].metadata)) < 0)
-						|| (nf10.cap_fd[port] < 3) )
+						|| (nf10.cap_fd[port] < 3) ) {
 				continue;
+			}
 			pkts[port]++;
 			TAILQ_INSERT_TAIL(&nf10.pcap_pkts[port], &pkt_osnt[i], entries);
 		}
@@ -660,9 +661,9 @@ lbuf_poll_loop:
 				nf10.byte_count += pkt_len;
 				nf10.pkt_count++;
 				records++;
-				if (nf10.pkt_count % 100000 == 0)
-					printf("[%u] got a packet on port %d records %lu len %u\n", 
-							nf10.pkt_count, port_num, records, pkt_len);
+//				if (nf10.pkt_count % 100000 == 0)
+//					printf("[%u] got a packet on port %d records %lu len %u\n", 
+//							nf10.pkt_count, port_num, records, pkt_len);
 			} 
 			else if (!LBUF_IS_PKT_VALID(port_num, pkt_len)) { 
 				fprintf(stderr, "Error: rx_cons=%u lbuf contains invalid pkt len=%u\n",
@@ -685,8 +686,8 @@ lbuf_poll_loop:
 		goto lbuf_poll_loop;
     } 
 
-    printf("XXXXXXXX terminating capturing thread (pkts = %u, bytes = %u) XXXXXXXX\n", 
-			nf10.pkt_count, nf10.byte_count);
+    // printf("XXXXXXXX terminating capturing thread (pkts = %u, bytes = %u) XXXXXXXX\n", 
+	//		nf10.pkt_count, nf10.byte_count);
     return -1;
 }
 
